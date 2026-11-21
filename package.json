@@ -1,0 +1,65 @@
+{
+  "name": "dsh-aux-models",
+  "version": "0.11.0",
+  "description": "DSH plugin: resident auxiliary models. A channel-aware registry (multipliers, cache hit rate, model mapping, measured prices), a learned router (7 task types, quality_mean, quality/cost weights, eval scores), and the aux_models / aux_route / aux_delegate / aux_delegate_batch tools — plus a Settings page that edits the registry, previews routing, creates llm-pi-ai provider routes, and runs the eval bank with live progress.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "aux-models.example.json",
+    "README.md",
+    "check-roundtrip.mjs",
+    "check-route.mjs",
+    "check-loop.mjs",
+    "check-section.mjs",
+    "check-settings.mjs",
+    "check-gateway.mjs",
+    "check-client.mjs",
+    "check-live.mjs",
+    "verify-live.mjs",
+    "check-bridge-live.mjs",
+    "check-eval.mjs",
+    "eval-runner.mjs",
+    "aux-eval-tasks.json",
+    "check-batch.mjs"
+  ],
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "dsh-plugin-marketplace",
+    "deepseek-harness",
+    "llm",
+    "router",
+    "llm-router",
+    "subagent",
+    "delegation",
+    "cost"
+  ],
+  "author": "frozen_laffer",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/frozen-laffer/dsh-aux-models.git"
+  },
+  "homepage": "https://github.com/frozen-laffer/dsh-aux-models#readme",
+  "bugs": {
+    "url": "https://github.com/frozen-laffer/dsh-aux-models/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

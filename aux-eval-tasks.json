@@ -1,0 +1,185 @@
+{
+ "version": 1,
+ "cycle": {
+  "days": 30,
+  "anchor": "2026-11-20"
+ },
+ "judges": [
+  "ds-pro",
+  "astra62-02",
+  "grok47"
+ ],
+ "tasks": [
+  {
+   "id": "t-code-duration",
+   "type": "code_generation",
+   "weight": 1,
+   "maxTokens": 600,
+   "timeoutMs": 60000,
+   "prompt": "写一个 Python 函数 `parse_duration(s: str) -> int`：把形如 `\"1h30m\"`、`\"90s\"`、`\"2h\"` 的时长字符串转成秒数；单位只允许 h/m/s，可任意顺序拼接但同一单位不能重复；空串、未知单位、重复单位、数字缺失都抛 `ValueError`。只输出函数代码，不要解释。",
+   "judge": {
+    "kind": "assert",
+    "language": "python",
+    "cases": [
+     {
+      "call": "parse_duration('1h30m')",
+      "expect": 5400
+     },
+     {
+      "call": "parse_duration('90s')",
+      "expect": 90
+     },
+     {
+      "call": "parse_duration('2h')",
+      "expect": 7200
+     },
+     {
+      "call": "parse_duration('1h30m15s')",
+      "expect": 5415
+     },
+     {
+      "call": "parse_duration('')",
+      "raises": "ValueError"
+     },
+     {
+      "call": "parse_duration('1h1h')",
+      "raises": "ValueError"
+     },
+     {
+      "call": "parse_duration('5x')",
+      "raises": "ValueError"
+     }
+    ]
+   }
+  },
+  {
+   "id": "t-code-race",
+   "type": "code_understanding",
+   "weight": 1,
+   "maxTokens": 700,
+   "timeoutMs": 90000,
+   "prompt": "下面这段缓存实现在并发下会重复计算，甚至可能抛异常。指出**具体是哪一步**出的问题，并给出最小改动补丁（不超过 8 行）。\n\n```python\nclass Cache:\n    def __init__(self):\n        self.data = {}\n\n    def get_or_set(self, key, compute):\n        if key not in self.data:\n            value = compute(key)\n            self.data[key] = value\n            return value\n        return self.data[key]\n```",
+   "judge": {
+    "kind": "checklist",
+    "must": [
+     "/(race|竞态|toctou|检查.{0,40}(之间|之后|窗口|间隙)|check-?then-?act)/i",
+     "/(with\\s+[\\w\\.]*lock|加锁|持锁|锁住|threading\\.Lock|\\.acquire\\(|互斥|mutex)/i",
+     "/(def\\s+get_or_set|with\\s+self\\.lock|\\\\\\\\python)/i"
+    ],
+    "mustNot": [
+     "/多进程|multiprocessing/i"
+    ],
+    "minHits": 2
+   }
+  },
+  {
+   "id": "t-analyze-groups",
+   "type": "analytical_reasoning",
+   "weight": 1,
+   "maxTokens": 700,
+   "timeoutMs": 90000,
+   "prompt": "下面是一个 API 中转站的四个分组（价格已换算为 ¥/M token，缓存命中率是最近 1 小时实测）。\n\n| 分组 | 倍率 | 输入¥/M | 缓存命中率 | 2h成功率 | 7d可用率 | 首字延迟 |\n|---|---:|---:|---:|---:|---:|---:|\n| A | 0.3x | 0.11 | 91.6% | 99.5% | 100% | 22.5s |\n| B | 0.45x | 0.15 | 93.9% | 99.5% | 100% | 16.1s |\n| C | 0.2x | 0.10 | 84.8% | 99.8% | 91.7% | 18.2s |\n| D | 0.07x | 0.05 | 70.0% | 85.0% | 98.5% | 24.6s |\n\n问题：日常批量委派（每次约 2 万输入 token、2 千输出 token）应该选哪个做主、哪个做兜底？给结论 + 两条依据（要提到缓存折算后的实际单价或成功率）。不要列表格。",
+   "judge": {
+    "kind": "checklist",
+    "must": [
+     "/(主|默认|日常)[^。]{0,30}(C\\b|A\\b)|(C\\b|A\\b)[^。]{0,30}(主|默认|日常)/",
+     "/(兜底|备用)[^。]{0,30}(A\\b|C\\b)|(A\\b|C\\b)[^。]{0,30}(兜底|备用)/",
+     "/(缓存|命中率|cache)[^。]{0,40}(单价|折算|实际|\\\\d\\\\.\\\\d)|(单价|折算)[^。]{0,30}(缓存|命中)/i",
+     "/(D\\b[^。]{0,30}(排除|不选|不建议|不适合|85|成功率))|(成功率[^。]{0,10}(85|低))/i"
+    ],
+    "mustNot": [],
+    "minHits": 2
+   }
+  },
+  {
+   "id": "t-price-arith",
+   "type": "factual_lookup",
+   "weight": 1,
+   "maxTokens": 500,
+   "timeoutMs": 60000,
+   "prompt": "某模型的单价：未命中输入 ¥2.00/M，缓存命中输入 ¥0.20/M，输出 ¥8.00/M。一次调用：输入 50000 token（其中 40000 命中缓存），输出 3000 token。\n\n1) 这次调用花了多少人民币？\n2) 如果缓存命中率降到 0%，同样的 token 量要花多少？\n只给两个数字（保留 5 位小数）和一行算式，不要解释。",
+   "judge": {
+    "kind": "numeric",
+    "expect": [
+     0.052,
+     0.124
+    ],
+    "tolerance": 0.003
+   }
+  },
+  {
+   "id": "t-write-compress",
+   "type": "writing",
+   "weight": 0.7,
+   "maxTokens": 400,
+   "timeoutMs": 60000,
+   "prompt": "把下面这段压到 120 字以内，必须保留这三个数字：89 个会话、97.5 MB、9 个工作区。不要分点，一段话。\n\n本地 DeepSeek Harness 的会话日志已经积累到 89 个会话、97.5 MB（zstd 压缩后），分布在 9 个工作区里，其中 FPGA 相关 32.0 MB、STM32 相关 28.2 MB、当前工作区 21.4 MB，时间跨度从 10 月 12 日到今天。这些日志里既有代码、报错，也有被采纳的修复方案，适合作为评测题库的原料。",
+   "judge": {
+    "kind": "rubric",
+    "rubric": "1) 不超过 120 字；2) 出现 89、97.5、9 三个数字；3) 保留'会话日志可作评测题库原料'的意思；4) 不分点、无小标题。四项各 1 分。"
+   }
+  },
+  {
+   "id": "t-log-diagnose",
+   "type": "code_understanding",
+   "weight": 1,
+   "maxTokens": 700,
+   "timeoutMs": 90000,
+   "prompt": "下面是一次调用失败的报错。判断真正的故障点在哪一层，并给出两个具体动作。\n\n```\nLlmError: aux-models: dieqi/gpt-6-astra failed: error: 502 \"cannot resolve tunnel destination cfapi.dieqiyun.top (ETIMEDOUT): local name resolution failed and a fresh resolver thread also failed — the local resolver may be unreachable or taken over by another DNS service (VPN/MagicDNS); route egress through an upstream proxy to have the destination resolved remotely, or restart the bili proxy process\"\n```\n\n背景：同一台机器上 `nslookup cfapi.dieqiyun.top` 正常，直接 `curl` 该域名 100% 成功。",
+   "judge": {
+    "kind": "checklist",
+    "must": [
+     "/(代理|proxy|本地解析|resolver|bili)/i",
+     "/(DNS|解析)[^。]{0,30}(失败|超时|timeout|接管|接手|unreachable)|(隧道|tunnel)/i",
+     "/(重试|retry|换通道|兜底|参数|replayRetry|cooldown|preflight)/i"
+    ],
+    "mustNot": [
+     "/(API ?key|密钥)[^。]{0,10}(无效|错误)/i"
+    ],
+    "minHits": 3
+   }
+  },
+  {
+   "id": "t-yaml-indent",
+   "type": "code_understanding",
+   "weight": 1,
+   "maxTokens": 600,
+   "timeoutMs": 60000,
+   "prompt": "下面这个 YAML 片段在加载时报 `bad indentation of a mapping entry (143:4)`。指出是哪一行、为什么，并给出改正后的片段（只改缩进）。\n\n```yaml\n- id: tdai-memory\n  config:\n   dataDir: 'F:\\DSH\\memory'\n   extraction:\n    enabled: false\n  name: dsh-tdai-memory\n```",
+   "judge": {
+    "kind": "checklist",
+    "must": [
+     "/(缩进|indent)/i",
+     "/(2 ?个?空格|两空格|4 ?个?空格|多(一|1)个空格|对齐|config[^\\n]{0,20}4)/i",
+     "/(dataDir|extraction|字段|子级|父级)/i"
+    ],
+    "mustNot": [],
+    "minHits": 2
+   }
+  },
+  {
+   "id": "t-tool-read",
+   "type": "code_understanding",
+   "weight": 1,
+   "maxTokens": 600,
+   "timeoutMs": 90000,
+   "prompt": "用 read 工具读取 `F:\\DS_WorkSpace\\dsh-aux-models\\package.json` 的前 25 行，然后：1) 列出你能看到的顶层字段名；2) 说出 version 的值。如果读不到，原样报告错误，不要猜。",
+   "judge": {
+    "kind": "checklist",
+    "requiresTools": true,
+    "must": [
+     "name",
+     "version",
+     "type",
+     "exports",
+     "dsh",
+     "files"
+    ],
+    "mustNot": [
+     "编造 version"
+    ],
+    "minHits": 5
+   }
+  }
+ ]
+}

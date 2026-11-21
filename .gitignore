@@ -1,0 +1,12 @@
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+
+# local state produced by the self-checks
+.aux-check-*/
+aux-stats.json
+aux-eval.json
+aux-eval-state.json
+aux-eval-results/
+results-*.json

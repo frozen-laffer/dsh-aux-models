@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "defaultModel": "astra",
+  "weights": { "quality": 0.7, "cost": 0.3 },
+  "routing": {
+    "askBelowConfidence": 0.15,
+    "askAboveCost": 0.05,
+    "maxCostPerCall": 0.5,
+    "maxRounds": 6,
+    "breakerFailures": 3,
+    "cooldownMinutes": 10
+  },
+  "channels": [
+    {
+      "id": "gateway-a",
+      "name": "示例网关分组 A（0.5x 倍率）",
+      "provider": "dieqi",
+      "multiplier": 0.5,
+      "cacheHitRate": 0.0,
+      "stability": 8,
+      "models": [
+        {
+          "id": "frontier",
+          "label": "Frontier 模型",
+          "model": "gpt-6-astra",
+          "qualityTier": 3,
+          "strengths": ["code_generation", "technical_design", "analytical_reasoning"],
+          "contextWindow": 1050000,
+          "maxOutputTokens": 128000,
+          "supportsTools": true,
+          "pricing": { "inputPerM": 10, "outputPerM": 50, "source": "官方公开价" }
+        },
+        {
+          "id": "cheap",
+          "label": "便宜模型",
+          "model": "gpt-5.6-luna",
+          "qualityTier": 1,
+          "strengths": ["factual_lookup", "writing"],
+          "contextWindow": 1050000,
+          "maxOutputTokens": 16384,
+          "supportsTools": false,
+          "pricing": { "inputPerM": 0.2, "outputPerM": 1.2, "source": "官方公开价" }
+        }
+      ]
+    }
+  ]
+}

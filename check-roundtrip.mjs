@@ -137,7 +137,7 @@ assert("effective price is derived, not stored", JSON.parse(readFileSync(workPat
 rmSync(workDir, { recursive: true, force: true });
 
 if (failures.length > 0) {
-  console.log(`\ncheck-roundtrip: ${failures.length} failure(s) 鈥?${failures.join(", ")}`);
+  console.log(`\ncheck-roundtrip: ${failures.length} failure(s) — ${failures.join(", ")}`);
   process.exit(1);
 }
 console.log("\ncheck-roundtrip: ok");

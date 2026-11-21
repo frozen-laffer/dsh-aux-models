@@ -27,23 +27,23 @@ const dir = mkdtempSync(join(tmpdir(), "aux-settings-"));
 const registryPath = join(dir, "aux-models.json");
 // A fixed fixture, not the live registry: the assertions below pin exact channel
 // and model ids, and the user's registry legitimately grows (extra channels such
-// as ch-01). check-roundtrip.mjs is the one that round-trips the real file.
+// as chan-b). check-roundtrip.mjs is the one that round-trips the real file.
 const FIXTURE = {
   version: 2,
-  defaultModel: "luna",
+  defaultModel: "gamma",
   weights: { quality: 0.7, cost: 0.3 },
   channels: [{
-    id: "x001-gpt",
+    id: "chan-legacy",
     name: "fixture",
-    provider: "dieqi",
+    provider: "relay",
     multiplier: 0.14,
     cacheHitRate: 0.8,
     stability: 5,
     enabled: true,
     models: [
-      { id: "astra", label: "GPT-6 Astra", model: "gpt-6-astra", qualityTier: 3, strengths: ["code_generation"], supportsTools: true, pricing: { inputPerM: 10, outputPerM: 50 } },
-      { id: "luna", label: "GPT-5.6 Luna", model: "gpt-5.6-luna", qualityTier: 3, strengths: ["writing"], supportsTools: true, pricing: { inputPerM: 10, outputPerM: 50 } },
-      { id: "codex-review", label: "Codex Auto Review", model: "codex-auto-review", qualityTier: 2, strengths: ["code_understanding"], supportsTools: false, pricing: { inputPerM: 10, outputPerM: 50 } },
+      { id: "alpha", label: "Aux Large", model: "aux-large", qualityTier: 3, strengths: ["code_generation"], supportsTools: true, pricing: { inputPerM: 10, outputPerM: 50 } },
+      { id: "gamma", label: "Aux Lite 5.6", model: "aux-lite-56", qualityTier: 3, strengths: ["writing"], supportsTools: true, pricing: { inputPerM: 10, outputPerM: 50 } },
+      { id: "aux-audit", label: "Codex Auto Review", model: "aux-review", qualityTier: 2, strengths: ["code_understanding"], supportsTools: false, pricing: { inputPerM: 10, outputPerM: 50 } },
     ],
   }],
 };
@@ -52,17 +52,17 @@ const config = { registryPath, statsPath: join(dir, "aux-stats.json") };
 
 const state = await registryStateView(config);
 check("channels", state.channels.length, 1);
-check("models in channel", state.channels[0].models.map(m => m.id), ["astra", "luna", "codex-review"]);
+check("models in channel", state.channels[0].models.map(m => m.id), ["alpha", "gamma", "aux-audit"]);
 assert("state.path is the config path", state.path === registryPath, state.path);
 assert("task types", state.taskTypes.length === 7, JSON.stringify(state.taskTypes));
 assert("weights surfaced", Number(state.weights.quality) === 0.7 && Number(state.weights.cost) === 0.3, JSON.stringify(state.weights));
 
-const astra = state.channels[0].models.find(m => m.id === "astra");
-assert("effective price known", astra.effective.known === true, JSON.stringify(astra.effective));
-assert("effective input = 10 * 0.14 * cache mix", Math.abs(astra.effective.inputPerM - 0.392) < 1e-9, String(astra.effective.inputPerM));
-assert("effective output = 10 * ... no: 50 * 0.14", Math.abs(astra.effective.outputPerM - 7) < 1e-9, String(astra.effective.outputPerM));
-assert("learned quality for every task type", Object.keys(astra.quality).length === 7, JSON.stringify(astra.quality));
-assert("health present", astra.health && typeof astra.health.breaker === "boolean", JSON.stringify(astra.health));
+const alpha = state.channels[0].models.find(m => m.id === "alpha");
+assert("effective price known", alpha.effective.known === true, JSON.stringify(alpha.effective));
+assert("effective input = 10 * 0.14 * cache mix", Math.abs(alpha.effective.inputPerM - 0.392) < 1e-9, String(alpha.effective.inputPerM));
+assert("effective output = 10 * ... no: 50 * 0.14", Math.abs(alpha.effective.outputPerM - 7) < 1e-9, String(alpha.effective.outputPerM));
+assert("learned quality for every task type", Object.keys(alpha.quality).length === 7, JSON.stringify(alpha.quality));
+assert("health present", alpha.health && typeof alpha.health.breaker === "boolean", JSON.stringify(alpha.health));
 assert("totals present", Number.isFinite(state.totals.calls) && Number.isFinite(state.totals.usd), JSON.stringify(state.totals));
 
 // Simulate what client.js sends back: drop server-computed fields, keep the form.
@@ -108,23 +108,23 @@ const written = writeRegistryFile(config, roundTrip);
 assert("writeRegistryFile returned the path", written === registryPath, written);
 const onDisk = JSON.parse(readFileSync(registryPath, "utf8"));
 check("on disk: version", onDisk.version, 2);
-check("on disk: model ids", onDisk.channels[0].models.map(m => m.id), ["astra", "luna", "codex-review"]);
+check("on disk: model ids", onDisk.channels[0].models.map(m => m.id), ["alpha", "gamma", "aux-audit"]);
 check("on disk: no computed fields", Object.keys(onDisk.channels[0].models[0]).includes("quality"), false);
 
 const reloaded = await loadRegistry(config);
 assert("reload sees the edited registry", reloaded.models.length === 3, String(reloaded.models.length));
 
 // A model-id edit must be visible immediately (the page's whole purpose).
-roundTrip.channels[0].models[1].model = "gpt-5.6-luna-edited";
+roundTrip.channels[0].models[1].model = "aux-lite-56e";
 writeRegistryFile(config, roundTrip);
 const edited = await loadRegistry(config);
-const luna = edited.models.find(m => m.id === "luna");
-check("edited model id persisted", luna && luna.model, "gpt-5.6-luna-edited");
+const gamma = edited.models.find(m => m.id === "gamma");
+check("edited model id persisted", gamma && gamma.model, "aux-lite-56e");
 
 // Empty registry must be rejected by the route before it truncates the file.
 let rejected = false;
 try {
-  const empty = buildRegistry({ version: 2, channels: [{ id: "c", name: "c", provider: "dieqi", models: [] }] }, registryPath);
+  const empty = buildRegistry({ version: 2, channels: [{ id: "c", name: "c", provider: "relay", models: [] }] }, registryPath);
   rejected = empty.models.length === 0;
 } catch {
   rejected = true;
@@ -201,7 +201,7 @@ check("save: cross-origin rejected", res.status, 403);
 res = await call("/dsh-aux-models/save", "POST", { body: { nope: true } });
 check("save: bad body rejected", res.status, 400);
 
-res = await call("/dsh-aux-models/save", "POST", { body: { registry: { version: 2, channels: [{ id: "c", name: "c", provider: "dieqi", models: [] }] } } });
+res = await call("/dsh-aux-models/save", "POST", { body: { registry: { version: 2, channels: [{ id: "c", name: "c", provider: "relay", models: [] }] } } });
 check("save: model-less registry rejected", res.status, 400);
 
 const editedForRoute = JSON.parse(JSON.stringify(roundTrip));
@@ -212,7 +212,7 @@ const savedBody = JSON.parse(res.body);
 assert("save: returns written path", savedBody.path === registryPath, savedBody.path);
 assert("save: returns model ids", savedBody.models.length === 3, JSON.stringify(savedBody.models));
 const afterSave = await loadRegistry(config);
-assert("save: label persisted", afterSave.models.find(m => m.id === "astra").label === "Saved through the route", afterSave.models.find(m => m.id === "astra").label);
+assert("save: label persisted", afterSave.models.find(m => m.id === "alpha").label === "Saved through the route", afterSave.models.find(m => m.id === "alpha").label);
 
 res = await call("/dsh-aux-models/test", "POST", { body: {} });
 check("test: missing modelId rejected", res.status, 400);

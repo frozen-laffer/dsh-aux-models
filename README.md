@@ -83,7 +83,7 @@ outputPerM  = 官方输出价 × multiplier
 工具循环的预算是**累计**的：每轮把 usage 里的 token 折算成美元累加，超过 `maxCostPerCall`
 （默认 $0.5）就提前收尾并说明原因。
 
-实测参考（`X001-GPT` 组，0.14x，缓存 80%）：20k 输入 + 2k 输出 ≈ **$0.022 ≈ ¥0.16**，
+实测参考（`示例分组 A` 组，0.14x，缓存 80%）：20k 输入 + 2k 输出 ≈ **$0.022 ≈ ¥0.16**，
 6 轮工具循环约 ¥0.8–1.2。统计与成本每轮都会落盘。
 
 ## 注册表：`$DSH_HOME/aux-models.json`（v2：分组）
@@ -93,7 +93,7 @@ outputPerM  = 官方输出价 × multiplier
 ```jsonc
 {
   "version": 2,
-  "defaultModel": "luna",
+  "defaultModel": "gamma",
   "weights": { "quality": 0.7, "cost": 0.3 },
   "routing": {
     "askBelowConfidence": 0.15,
@@ -105,17 +105,17 @@ outputPerM  = 官方输出价 × multiplier
   },
   "channels": [
     {
-      "id": "x001-gpt",
-      "name": "X001-GPT 不降智分组（0.14x）",
-      "provider": "dieqi",          // 分组的 provider 路由名
+      "id": "chan-legacy",
+      "name": "示例分组 A（0.14x）",
+      "provider": "relay",          // 分组的 provider 路由名
       "multiplier": 0.14,           // 倍率：官方价 × 它
       "cacheHitRate": 0.8,          // 缓存命中率，折算输入成本
       "stability": 5,               // 1-10，低稳定性会被轻微降权
       "models": [
         {
-          "id": "astra",
-          "label": "GPT-6 Astra",
-          "model": "gpt-6-astra",
+          "id": "alpha",
+          "label": "Aux Large",
+          "model": "aux-large",
           "qualityTier": 3,         // 1 budget / 2 mid / 3 frontier
           "strengths": ["code_generation", "technical_design"],
           "contextWindow": 1050000,
@@ -129,7 +129,7 @@ outputPerM  = 官方输出价 × multiplier
 }
 ```
 
-- `mapsTo`：网关内该 id 实际映射到别的模型（例如 luna → gpt-6-astra），只用于展示与解释。
+- `mapsTo`：网关内该 id 实际映射到别的模型（例如 gamma → aux-large），只用于展示与解释。
 - `pricing` 填**官方价**（美元/百万 token）；倍率与缓存由分组的 `multiplier` / `cacheHitRate` 施加。
   价格未知时，路由用"相对贵"的保守代理，不会当成免费。
 - 统计文件 `$DSH_HOME/aux-stats.json`：每个 (模型 × 任务类型) 的 `n / qualitySum / failN / latencySumMs / tokensIn / tokensOut`，
@@ -270,10 +270,10 @@ node check-live.mjs      # 真启一遍 apply()：假 Cordis ctx + 真 http 服�
 
 | 路由 | 输入 tok | 输出 tok | 墙钟 | 花费 |
 |---|---:|---:|---:|---:|
-| `astra`（06 组，推理型） | 6440 | 4794 | 163s | $0.0355 |
-| `sol61`（01 组，精简型） | 1148 | 561 | ~7s | $0.0004 |
+| `alpha`（06 组，推理型） | 6440 | 4794 | 163s | $0.0355 |
+| `beta61`（01 组，精简型） | 1148 | 561 | ~7s | $0.0004 |
 
-质量基本并列（astra 多两条建议，sol61 更贴题）。差异几乎全在**输出 token**：
+质量基本并列（alpha 多两条建议，beta61 更贴题）。差异几乎全在**输出 token**：
 推理型路由会把"思考"也算进 completion，而输出单价是输入单价的几十倍。
 
 所以 `aux_delegate` 现在默认 `max_tokens: 1600`（不传就卡这个值，需要长文显式调大），
@@ -281,9 +281,9 @@ node check-live.mjs      # 真启一遍 apply()：假 Cordis ctx + 真 http 服�
 "写委派指令时顺手带一句长度要求"。
 ## 0.7.9 — 推理型路由会吃光 max_tokens
 
-新增两个渠道（`dieqi-ds` / `dieqi-grok`）后实测发现的坑：
+新增两个渠道（`relay-ds` / `relay-x`）后实测发现的坑：
 
-`deepseek-v4.1-flash`（三方直连）与 `grok-4.7` 都会先写 `reasoning_content`，**思考量也算进 max_tokens**。
+`deepseek-v4.1-flash`（三方直连）与 `aux-x` 都会先写 `reasoning_content`，**思考量也算进 max_tokens**。
 同一道日志题：`ds-flash` 花了 5,528 个 reasoning token 才开始写 700 字的答案；给 1,600 的上限时
 `content` 是空的，插件只会报 "returned no text"。
 
@@ -293,9 +293,9 @@ node check-live.mjs      # 真启一遍 apply()：假 Cordis ctx + 真 http 服�
 2. 重试前先按 `estimateCost` 算这 8k 要多少钱，超过单次预算就直接报错，叫调用方调大 `max_tokens` 或换非推理路由；
 3. 仍为空才抛错，并在错误里点名"这条路由把预算全花在推理上"。
 
-另外记下 `grok` 渠道的价格反解（它返回 `usage.cost_in_usd_ticks`，1 tick = 1e-10 USD）：
-`grok-4.7` = 入 20k ticks/token（命中缓存按 25% 计费）、出 60k ticks/token → 折官方价 $5/$15，
-`grok-4.7-build-fast` 恰为两倍（$10/$30）。
+另外记下某个渠道的价格反解方式（它返回 `usage.cost_in_usd_ticks`，1 tick = 1e-10 USD）：
+`aux-x` = 入 20k ticks/token（命中缓存按 25% 计费）、出 60k ticks/token → 折官方价 $5/$15，
+`aux-x-build-fast` 恰为两倍（$10/$30）。
 
 ## 0.8.3 — 「价格设置」页的桥接（contextBridge 是冻结的）
 
@@ -348,7 +348,7 @@ node eval-build/to-eval.mjs              # 写进 aux-eval.json（立即生效�
 ```
 aux_delegate_batch(tasks=[
   "审 F:\a.js 的空指针风险",
-  { task: "把这段日志归并成表", model: "codex-review" },
+  { task: "把这段日志归并成表", model: "aux-audit" },
   { task: "读 package.json 报版本号", tools: true },
 ], max_cost: 0.05)
 ```

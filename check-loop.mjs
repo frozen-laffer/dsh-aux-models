@@ -14,8 +14,8 @@ import { pathToFileURL } from "node:url";
 const dir = mkdtempSync(join(tmpdir(), "aux-loop-"));
 const registryPath = join(dir, "aux-models.json");
 writeFileSync(registryPath, JSON.stringify({
-  defaultModel: "luna",
-  models: [{ id: "luna", provider: "dieqi", model: "gpt-5.6-luna", supportsTools: true }],
+  defaultModel: "gamma",
+  models: [{ id: "gamma", provider: "relay", model: "aux-lite-56", supportsTools: true }],
 }));
 
 const mod = await import(pathToFileURL(join(import.meta.dirname, "index.js")).href);

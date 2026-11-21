@@ -599,17 +599,17 @@ window.__ModuleLoader__.load({
                   value: draft.provider,
                   readOnly: !!draft.editing,
                   onChange: function (e) { patch({ provider: e.target.value }); },
-                  placeholder: "dieqi-img",
+                  placeholder: "relay-img",
                   style: draft.editing ? Object.assign({}, inputStyle, { opacity: 0.7 }) : inputStyle,
                 })),
-                h(Field, { label: "显示名" }, h("input", { value: draft.displayName, onChange: function (e) { patch({ displayName: e.target.value }); }, placeholder: "蝶祈云 图片", style: inputStyle })),
+                h(Field, { label: "显示名" }, h("input", { value: draft.displayName, onChange: function (e) { patch({ displayName: e.target.value }); }, placeholder: "中转站 图片", style: inputStyle })),
                 h(Field, { label: "协议" }, h("select", {
                   value: draft.api,
                   onChange: function (e) { patch({ api: e.target.value }); },
                   style: inputStyle,
                 }, (routes.apis || ["openai-completions"]).map(function (name) { return h("option", { key: name, value: name }, name); }))),
-                h(Field, { label: "baseURL（含 /v1）" }, h("input", { value: draft.baseURL, onChange: function (e) { patch({ baseURL: e.target.value }); }, placeholder: "https://cfimg.dieqiyun.top/v1", style: inputStyle })),
-                h(Field, { label: "密钥变量名" }, h("input", { value: draft.apiKeyEnv, onChange: function (e) { patch({ apiKeyEnv: e.target.value }); }, placeholder: "DIEQI_IMG_KEY", style: inputStyle })),
+                h(Field, { label: "baseURL（含 /v1）" }, h("input", { value: draft.baseURL, onChange: function (e) { patch({ baseURL: e.target.value }); }, placeholder: "https://img.relay.example.com/v1", style: inputStyle })),
+                h(Field, { label: "密钥变量名" }, h("input", { value: draft.apiKeyEnv, onChange: function (e) { patch({ apiKeyEnv: e.target.value }); }, placeholder: "RELAY_IMG_KEY", style: inputStyle })),
                 h(Field, { label: "密钥值（留空 = 不改）" }, h("input", {
                   type: "password",
                   value: draft.apiKey,
@@ -621,7 +621,7 @@ window.__ModuleLoader__.load({
               h(
                 "div",
                 { style: { marginTop: 8 } },
-                h("div", { style: { fontSize: 11, color: COLORS.muted, marginBottom: 4 } }, "模型 id，每行一个（可跟 上下文tokens 最大输出tokens，例如 gpt-6-astra 1050000 128000）"),
+                h("div", { style: { fontSize: 11, color: COLORS.muted, marginBottom: 4 } }, "模型 id，每行一个（可跟 上下文tokens 最大输出tokens，例如 aux-large 1050000 128000）"),
                 h("textarea", {
                   value: draft.modelsText,
                   onChange: function (e) { patch({ modelsText: e.target.value }); },
@@ -902,7 +902,7 @@ window.__ModuleLoader__.load({
             h("div", null, "模型范围（留空 = 全部启用）"),
             h("input", {
               value: form.models,
-              placeholder: "例如 codex-review,cr05,astra62-04",
+              placeholder: "例如 aux-audit,rv05,alpha62-04",
               onChange: function (e) { patch({ models: e.target.value }); },
               style: Object.assign({}, inputStyle, { width: "100%", marginTop: 2 }),
             })),

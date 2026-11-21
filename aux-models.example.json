@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "defaultModel": "astra",
+  "defaultModel": "alpha",
   "weights": { "quality": 0.7, "cost": 0.3 },
   "routing": {
     "askBelowConfidence": 0.15,
@@ -13,33 +13,33 @@
   "channels": [
     {
       "id": "gateway-a",
-      "name": "示例网关分组 A（0.5x 倍率）",
-      "provider": "dieqi",
+      "name": "Example channel A (0.5x multiplier)",
+      "provider": "relay",
       "multiplier": 0.5,
       "cacheHitRate": 0.0,
       "stability": 8,
       "models": [
         {
           "id": "frontier",
-          "label": "Frontier 模型",
-          "model": "gpt-6-astra",
+          "label": "Frontier model",
+          "model": "aux-large",
           "qualityTier": 3,
           "strengths": ["code_generation", "technical_design", "analytical_reasoning"],
           "contextWindow": 1050000,
           "maxOutputTokens": 128000,
           "supportsTools": true,
-          "pricing": { "inputPerM": 10, "outputPerM": 50, "source": "官方公开价" }
+          "pricing": { "inputPerM": 10, "outputPerM": 50, "source": "vendor list price" }
         },
         {
           "id": "cheap",
-          "label": "便宜模型",
-          "model": "gpt-5.6-luna",
+          "label": "Cheap model",
+          "model": "aux-lite-56",
           "qualityTier": 1,
           "strengths": ["factual_lookup", "writing"],
           "contextWindow": 1050000,
           "maxOutputTokens": 16384,
           "supportsTools": false,
-          "pricing": { "inputPerM": 0.2, "outputPerM": 1.2, "source": "官方公开价" }
+          "pricing": { "inputPerM": 0.2, "outputPerM": 1.2, "source": "vendor list price" }
         }
       ]
     }

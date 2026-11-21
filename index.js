@@ -4,7 +4,7 @@
  * v2 adds three things on top of the v1 single-shot/tool-loop delegation:
  *
  *   1. a *channel* layer (group → multiplier → model mapping), so a gateway
- *      group such as "0.14x, all ids map to gpt-6-astra" is described once;
+ *      group such as "0.14x, all ids map to aux-large" is described once;
  *   2. a *learned router* — 7 task types (litellm naming), a per
  *      (task type × model) `quality_mean` that improves with every call, and
  *      `weights.quality` / `weights.cost` as the single cost/quality lever;
@@ -74,7 +74,7 @@ const DEFAULT_ROUTING = {
 
 const DEFAULT_TIMEOUT_MS = 180000;
 const DEFAULT_MAX_INPUT_CHARS = 60000;
-// Reasoning-flavoured routes bill every output token (gpt-6-astra: $7.00/M out,
+// Reasoning-flavoured routes bill every output token (aux-large: $7.00/M out,
 // ~4.8k tokens for a one-page answer). A default cap keeps a casual task from
 // costing 10x what it should; callers can raise it per call.
 const DEFAULT_MAX_TOKENS = 1600;
@@ -84,17 +84,17 @@ const MAX_TOOL_RESULT_CHARS = 20000;
 
 const DEFAULT_CHANNELS = [
   {
-    id: "x001-gpt",
-    name: "X001-GPT 不降智分组 (0.14x)",
-    provider: "dieqi",
+    id: "chan-legacy",
+    name: "示例分组 A 不降智分组 (0.14x)",
+    provider: "relay",
     multiplier: 0.14,
     cacheHitRate: 0.8,
     stability: 5,
     models: [
       {
-        id: "astra",
-        label: "GPT-6 Astra",
-        model: "gpt-6-astra",
+        id: "alpha",
+        label: "Aux Large",
+        model: "aux-large",
         qualityTier: 3,
         strengths: ["code_generation", "code_understanding", "technical_design", "analytical_reasoning"],
         contextWindow: 1050000,
@@ -103,30 +103,30 @@ const DEFAULT_CHANNELS = [
         pricing: { inputPerM: 10, outputPerM: 50, source: "openrouter" },
       },
       {
-        id: "luna",
-        label: "GPT-5.6 Luna",
-        model: "gpt-5.6-luna",
-        mapsTo: "gpt-6-astra",
+        id: "gamma",
+        label: "Aux Lite 5.6",
+        model: "aux-lite-56",
+        mapsTo: "aux-large",
         qualityTier: 3,
         strengths: ["factual_lookup", "writing"],
         contextWindow: 1050000,
         maxOutputTokens: 128000,
         supportsTools: true,
         pricing: { inputPerM: 10, outputPerM: 50, source: "openrouter" },
-        notes: "网关内映射到 gpt-6-astra，按 astra 计费",
+        notes: "网关内映射到 aux-large，按 alpha 计费",
       },
       {
-        id: "codex-review",
+        id: "aux-audit",
         label: "Codex Auto Review",
-        model: "codex-auto-review",
-        mapsTo: "gpt-6-astra",
+        model: "aux-review",
+        mapsTo: "aux-large",
         qualityTier: 2,
         strengths: ["code_understanding"],
         contextWindow: 1050000,
         maxOutputTokens: 128000,
         supportsTools: false,
         pricing: { inputPerM: 10, outputPerM: 50, source: "gateway-group" },
-        notes: "自动审批用；同组按 astra 计费",
+        notes: "自动审批用；同组按 alpha 计费",
       },
     ],
   },
@@ -1735,14 +1735,14 @@ function validateRouteBody(body) {
   const problems = [];
   const provider = typeof body?.provider === "string" ? body.provider.trim() : "";
   if (!/^[a-z][a-z0-9-]{1,40}$/.test(provider)) {
-    problems.push("路由 id 必须是小写字母开头的连字符标识（如 dieqi-img）");
+    problems.push("路由 id 必须是小写字母开头的连字符标识（如 relay-img）");
   }
   const api = GATEWAY_APIS.includes(body?.api) ? body.api : "";
   if (!api) problems.push(`协议必须是 ${GATEWAY_APIS.join(" / ")} 之一`);
   const baseURL = typeof body?.baseURL === "string" ? body.baseURL.trim().replace(/\/+$/, "") : "";
   if (!/^https?:\/\/[^\s]+$/.test(baseURL)) problems.push("baseURL 必须以 http(s):// 开头");
   const apiKeyEnv = typeof body?.apiKeyEnv === "string" ? body.apiKeyEnv.trim() : "";
-  if (!/^[A-Z][A-Z0-9_]{2,60}$/.test(apiKeyEnv)) problems.push("密钥变量名必须是环境变量形式（如 DIEQI_IMG_KEY）");
+  if (!/^[A-Z][A-Z0-9_]{2,60}$/.test(apiKeyEnv)) problems.push("密钥变量名必须是环境变量形式（如 RELAY_IMG_KEY）");
   const models = [];
   for (const raw of Array.isArray(body?.models) ? body.models : []) {
     const id = modelIdOf(raw).trim();

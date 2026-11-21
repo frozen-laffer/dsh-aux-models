@@ -31,22 +31,22 @@ plugin.writeRegistryFile(
   { registryPath },
   plugin.buildRegistry({
     version: 2,
-    defaultModel: "astra",
+    defaultModel: "alpha",
     weights: { quality: 0.7, cost: 0.3 },
     channels: [
       {
         id: "gpt",
         name: "GPT",
-        provider: "dieqi",
+        provider: "relay",
         multiplier: 0.14,
         cacheHitRate: 0.8,
         stability: 7,
         enabled: true,
         models: [
           {
-            id: "astra",
+            id: "alpha",
             label: "Astra",
-            model: "gpt-6-astra",
+            model: "aux-large",
             qualityTier: 3,
             strengths: ["code_generation", "analytical_reasoning"],
             supportsTools: true,
@@ -55,7 +55,7 @@ plugin.writeRegistryFile(
           {
             id: "mini",
             label: "Mini",
-            model: "gpt-mini",
+            model: "test-mini",
             qualityTier: 1,
             strengths: ["general"],
             supportsTools: false,
@@ -75,7 +75,7 @@ const llmCalls = [];
 const failingModels = new Set();
 const truncatedOnce = new Set();
 
-const providerConfig = { providers: { dieqi: { displayName: "蝶祈云", api: "openai-completions", baseURL: "https://cfapi.dieqiyun.top/v1", apiKeyEnv: "DIEQI_API_KEY", models: [{ id: "gpt-6-astra" }] } } };
+const providerConfig = { providers: { relay: { displayName: "中转站", api: "openai-completions", baseURL: "https://relay.example.com/v1", apiKeyEnv: "RELAY_API_KEY", models: [{ id: "aux-large" }] } } };
 const editorRow = { options: { id: "llm-pi-ai", name: "@deepseek-ai/dsh-llm-pi-ai", config: providerConfig } };
 const editor = {
   entries: () => [editorRow],
@@ -83,7 +83,7 @@ const editor = {
   async edit(entry, change) { entry.options.config = change(entry.options.config, {}); },
 };
 const credentials = {
-  store: { DIEQI_API_KEY: "sk-live-test" },
+  store: { RELAY_API_KEY: "sk-live-test" },
   async describe(ref) { return { configured: !!this.store[ref], writable: true, source: "test" }; },
   async resolve(ref) { return this.store[ref] ? { value: this.store[ref] } : undefined; },
   async set(ref, value) { this.store[ref] = value; },
@@ -110,7 +110,7 @@ const ctx = {
     async *stream(request) {
       llmCalls.push(request);
       if (failingModels.has(request.model)) {
-        throw new Error('aux-models: dieqi/gpt-6-astra failed: error: 502 "cannot resolve tunnel destination cfapi.dieqiyun.top (ETIMEDOUT)"');
+        throw new Error('aux-models: relay/aux-large failed: error: 502 "cannot resolve tunnel destination relay.example.com (ETIMEDOUT)"');
       }
       if (truncatedOnce.has(request.model)) {
         // Reasoning routes can spend the whole budget thinking and emit no text.
@@ -145,7 +145,7 @@ assert("every tool declares output", everyToolHasOutput, JSON.stringify(tools.ma
 assert("registers policy + routing sections", sections.length === 2 && sections.some(s => s.name === "aux-models:policy") && sections.some(s => s.name === "aux-models:routing"), JSON.stringify(sections.map(s => s.name)));
 assert("policy sits next to PLAN_POLICY and routing stays by the tool docs", sections.find(s => s.name === "aux-models:policy")?.order === 550 && sections.find(s => s.name === "aux-models:routing")?.order === 2790);
 const guidance = (() => { const spec = sections.find(s => s.name === "aux-models:routing"); return spec && typeof spec.text === "function" ? spec.text() : ""; })();
-assert("guidance mentions the models", guidance.includes("astra") && guidance.includes("$0.39/M"), guidance.slice(0, 200));
+assert("guidance mentions the models", guidance.includes("alpha") && guidance.includes("$0.39/M"), guidance.slice(0, 200));
 
 const expectedRoutes = [
   "/dsh-aux-models/balance-prices",
@@ -230,47 +230,47 @@ response = await fetch(`${origin}/dsh-aux-models/route`, {
   method: "POST",
   headers: { "content-type": "application/json", origin },
   body: JSON.stringify({
-    provider: "dieqi-img",
-    displayName: "蝶祈云 图片",
+    provider: "relay-img",
+    displayName: "中转站 图片",
     api: "openai-completions",
-    baseURL: "https://cfimg.dieqiyun.top/v1",
-    apiKeyEnv: "DIEQI_IMG_KEY",
+    baseURL: "https://img.relay.example.com/v1",
+    apiKeyEnv: "RELAY_IMG_KEY",
     apiKey: "sk-image-test",
-    models: [{ id: "gpt-image-2.6-flare" }],
+    models: [{ id: "img-model-a" }],
   }),
 });
 payload = await response.json();
 assert("route 200", response.status === 200, JSON.stringify(payload));
-assert("route written to config", !!editorRow.options.config.providers["dieqi-img"]);
-assert("route key stored", credentials.store.DIEQI_IMG_KEY === "sk-image-test");
+assert("route written to config", !!editorRow.options.config.providers["relay-img"]);
+assert("route key stored", credentials.store.RELAY_IMG_KEY === "sk-image-test");
 
 response = await fetch(`${origin}/dsh-aux-models/routes`);
 payload = await response.json();
-assert("routes lists both", payload.providers.map(p => p.id).sort().join(",") === "dieqi,dieqi-img", JSON.stringify(payload.providers.map(p => p.id)));
+assert("routes lists both", payload.providers.map(p => p.id).sort().join(",") === "relay,relay-img", JSON.stringify(payload.providers.map(p => p.id)));
 
 response = await fetch(`${origin}/dsh-aux-models/route-remove`, {
   method: "POST",
   headers: { "content-type": "application/json", origin },
-  body: JSON.stringify({ provider: "dieqi" }),
+  body: JSON.stringify({ provider: "relay" }),
 });
 payload = await response.json();
 assert("removing an in-use route is refused", response.status === 409, JSON.stringify(payload));
-assert("refusal names the models", String(payload.error).includes("astra"), String(payload.error));
+assert("refusal names the models", String(payload.error).includes("alpha"), String(payload.error));
 
 response = await fetch(`${origin}/dsh-aux-models/route-remove`, {
   method: "POST",
   headers: { "content-type": "application/json", origin },
-  body: JSON.stringify({ provider: "dieqi-img" }),
+  body: JSON.stringify({ provider: "relay-img" }),
 });
 payload = await response.json();
 assert("removing an unused route works", response.status === 200, JSON.stringify(payload));
-assert("config no longer has it", editorRow.options.config.providers["dieqi-img"] === undefined);
+assert("config no longer has it", editorRow.options.config.providers["relay-img"] === undefined);
 
 /* the /test route goes through the stubbed llm.stream */
 response = await fetch(`${origin}/dsh-aux-models/test`, {
   method: "POST",
   headers: { "content-type": "application/json", origin },
-  body: JSON.stringify({ modelId: "astra" }),
+  body: JSON.stringify({ modelId: "alpha" }),
 });
 payload = await response.json();
 assert("test route ok", payload.ok === true, JSON.stringify(payload));
@@ -314,12 +314,12 @@ assert("eval: stop without a run is 409", response.status === 409, JSON.stringif
 response = await fetch(`${origin}/dsh-aux-models/balance-prices`);
 payload = await response.json();
 assert("balance-prices: GET ok", response.status === 200 && payload.ok === true, JSON.stringify(payload).slice(0, 160));
-assert("balance-prices: exposes defaults", !!payload.defaults?.["gpt-6-astra"], JSON.stringify(payload.defaults ?? {}).slice(0, 160));
+assert("balance-prices: exposes defaults", Object.keys(payload.defaults ?? {}).length >= 4, JSON.stringify(payload.defaults ?? {}).slice(0, 160));
 
 response = await fetch(`${origin}/dsh-aux-models/balance-prices`, {
   method: "POST",
   headers: { "content-type": "application/json", origin },
-  body: JSON.stringify({ model: "gpt-6-astra", prices: { peak: { cacheMiss: 1.5, cacheHit: 0.15, output: 7.5 } } }),
+  body: JSON.stringify({ model: "aux-large", prices: { peak: { cacheMiss: 1.5, cacheHit: 0.15, output: 7.5 } } }),
 });
 payload = await response.json();
 assert("balance-prices: POST saves", response.status === 200 && payload.prices?.peak?.output === 7.5, JSON.stringify(payload));
@@ -327,14 +327,14 @@ assert("balance-prices: POST saves", response.status === 200 && payload.prices?.
 response = await fetch(`${origin}/dsh-aux-models/balance-prices`, {
   method: "POST",
   headers: { "content-type": "application/json", origin },
-  body: JSON.stringify({ model: "gpt-6-astra", prices: { peak: { cacheMiss: -1, cacheHit: 0, output: 0 } } }),
+  body: JSON.stringify({ model: "aux-large", prices: { peak: { cacheMiss: -1, cacheHit: 0, output: 0 } } }),
 });
 assert("balance-prices: rejects negative", response.status === 400, String(response.status));
 
 response = await fetch(`${origin}/dsh-aux-models/balance-prices`, {
   method: "POST",
   headers: { "content-type": "application/json", origin },
-  body: JSON.stringify({ model: "gpt-6-astra", reset: true }),
+  body: JSON.stringify({ model: "aux-large", reset: true }),
 });
 payload = await response.json();
 assert("balance-prices: reset clears", response.status === 200 && payload.prices === null, JSON.stringify(payload));
@@ -345,7 +345,7 @@ assert("balance-prices: reset clears", response.status === 200 && payload.prices
 
 const byName = Object.fromEntries(tools.map(t => [t.name, t]));
 const listed = await byName.aux_models.execute({}, {});
-assert("aux_models lists both models", listed.includes("astra") && listed.includes("mini"), listed);
+assert("aux_models lists both models", listed.includes("alpha") && listed.includes("mini"), listed);
 assert("aux_models shows the learned column", listed.includes("样本"), listed.slice(0, 160));
 
 const routed = await byName.aux_route.execute({ task: "把这段 Python 解析 CSV 的函数改写一下", strategy: "cheap" }, {});
@@ -356,11 +356,11 @@ const delegated = await byName.aux_delegate.execute({ task: "say pong" }, { sess
 assert("aux_delegate answered", delegated.text === "pong", JSON.stringify(delegated));
 assert("aux_delegate costed the call", typeof delegated.costUsd === "number" && delegated.costUsd > 0, JSON.stringify(delegated));
 assert("aux_delegate auto-routed", String(delegated.routedBy).startsWith("router:"), delegated.routedBy);
-assert("aux_delegate passed the route to llm", llmCalls.at(-1).provider === "dieqi" && ["gpt-6-astra", "gpt-mini"].includes(llmCalls.at(-1).model), JSON.stringify(llmCalls.at(-1)));
+assert("aux_delegate passed the route to llm", llmCalls.at(-1).provider === "relay" && ["aux-large", "test-mini"].includes(llmCalls.at(-1).model), JSON.stringify(llmCalls.at(-1)));
 assert("aux_delegate caps output by default", llmCalls.at(-1).maxTokens === 1600, String(llmCalls.at(-1).maxTokens));
 
-const pinned = await byName.aux_delegate.execute({ task: "say pong", model: "astra" }, { sessionId: "s-live", signal: undefined });
-assert("explicit model wins", pinned.model === "dieqi/gpt-6-astra" && llmCalls.at(-1).model === "gpt-6-astra", JSON.stringify(pinned));
+const pinned = await byName.aux_delegate.execute({ task: "say pong", model: "alpha" }, { sessionId: "s-live", signal: undefined });
+assert("explicit model wins", pinned.model === "relay/aux-large" && llmCalls.at(-1).model === "aux-large", JSON.stringify(pinned));
 assert("explicit model is dearer than the cheap one", pinned.costUsd > delegated.costUsd, `${pinned.costUsd} vs ${delegated.costUsd}`);
 
 /* -------------------------------------------------------------------------- */
@@ -368,24 +368,24 @@ assert("explicit model is dearer than the cheap one", pinned.costUsd > delegated
 /* -------------------------------------------------------------------------- */
 
 /* strategy=best picks the frontier route; make it fail the way the relay does. */
-failingModels.add("gpt-6-astra");
+failingModels.add("aux-large");
 const fellBack = await byName.aux_delegate.execute({ task: "design the retry policy for this API", strategy: "best" }, { sessionId: "s-live", signal: undefined });
 assert("fallback answered", fellBack.text === "pong", JSON.stringify(fellBack));
-assert("fallback moved to another route", fellBack.model !== "dieqi/gpt-6-astra", fellBack.model);
-assert("fallback names the model it left", fellBack.fellBackFrom === "astra", JSON.stringify(fellBack));
+assert("fallback moved to another route", fellBack.model !== "relay/aux-large", fellBack.model);
+assert("fallback names the model it left", fellBack.fellBackFrom === "alpha", JSON.stringify(fellBack));
 assert("fallback explains itself", /failed \(.*502.*\); fell back to /.test(String(fellBack.note)), String(fellBack.note));
 
 /* an explicitly pinned model must NOT silently change (the caller asked for it) */
 let pinError = null;
 try {
-  await byName.aux_delegate.execute({ task: "say pong", model: "astra" }, { sessionId: "s-live", signal: undefined });
+  await byName.aux_delegate.execute({ task: "say pong", model: "alpha" }, { sessionId: "s-live", signal: undefined });
 } catch (error) {
   pinError = error;
 }
 assert("explicit model does not fall back", pinError !== null && /502/.test(pinError.message), pinError && pinError.message);
 
 /* no candidate left → the failure surfaces instead of looping */
-failingModels.add("gpt-mini");
+failingModels.add("test-mini");
 let bothError = null;
 try {
   await byName.aux_delegate.execute({ task: "design the retry policy for this API", strategy: "best" }, { sessionId: "s-live", signal: undefined });
@@ -396,8 +396,8 @@ assert("exhausted fallback surfaces the error", bothError !== null && /502|both 
 failingModels.clear();
 
 /* a reasoning route that burned its budget gets one retry with a doubled cap */
-truncatedOnce.add("gpt-6-astra");
-const headroom = await byName.aux_delegate.execute({ task: "say pong", model: "astra" }, { sessionId: "s-live", signal: undefined });
+truncatedOnce.add("aux-large");
+const headroom = await byName.aux_delegate.execute({ task: "say pong", model: "alpha" }, { sessionId: "s-live", signal: undefined });
 assert("retries when reasoning ate the whole budget", headroom.text === "pong", JSON.stringify(headroom));
 assert("the retry jumps to the ceiling", llmCalls.at(-1).maxTokens === 8000, String(llmCalls.at(-1).maxTokens));
 

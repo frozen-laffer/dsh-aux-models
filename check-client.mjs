@@ -90,7 +90,7 @@ const state = {
   ok: true,
   path: "F:\\DSH\\DSH-Home\\aux-models.json",
   statsPath: "F:\\DSH\\DSH-Home\\aux-stats.json",
-  defaultModel: "luna",
+  defaultModel: "gamma",
   defaultSystem: "",
   weights: { quality: 0.7, cost: 0.3 },
   routing: { askBelowConfidence: 0.15, askAboveCost: 0.05, maxCostPerCall: 0.5 },
@@ -98,18 +98,18 @@ const state = {
   totals: { calls: 3, usd: 0.0123 },
   channels: [
     {
-      id: "x001-gpt",
-      name: "X001-GPT",
-      provider: "dieqi",
+      id: "chan-legacy",
+      name: "示例分组 A",
+      provider: "relay",
       multiplier: 0.14,
       cacheHitRate: 0.8,
       stability: 5,
       enabled: true,
       models: [
         {
-          id: "astra",
-          label: "GPT-6 Astra",
-          model: "gpt-6-astra",
+          id: "alpha",
+          label: "Aux Large",
+          model: "aux-large",
           mapsTo: "",
           qualityTier: 3,
           strengths: ["code_generation"],
@@ -141,13 +141,13 @@ const routes = {
   apis: ["openai-completions", "openai-responses", "anthropic-messages"],
   providers: [
     {
-      id: "dieqi",
-      displayName: "蝶祈云 GPT",
+      id: "relay",
+      displayName: "中转站 GPT",
       api: "openai-completions",
-      baseURL: "https://cfapi.dieqiyun.top/v1",
-      apiKeyEnv: "DIEQI_API_KEY",
-      models: ["gpt-6-astra"],
-      credential: { ref: "DIEQI_API_KEY", configured: true, writable: true, source: "store" },
+      baseURL: "https://relay.example.com/v1",
+      apiKeyEnv: "RELAY_API_KEY",
+      models: ["aux-large"],
+      credential: { ref: "RELAY_API_KEY", configured: true, writable: true, source: "store" },
     },
   ],
 };
@@ -198,11 +198,11 @@ const fields = fieldValues(tree).join(" | ");
 assert("renders the section title", flat.includes("辅助模型"), flat.slice(0, 120));
 assert("renders totals", flat.includes("累计 3 次调用"), flat.slice(0, 200));
 assert("renders the gateway panel", flat.includes("网关路由"), flat.slice(0, 400));
-assert("lists the provider route", flat.includes("dieqi") && flat.includes("https://cfapi.dieqiyun.top/v1"), flat.slice(0, 600));
-assert("shows the credential badge", flat.includes("DIEQI_API_KEY 已配置"), flat.slice(0, 600));
+assert("lists the provider route", flat.includes("relay") && flat.includes("https://relay.example.com/v1"), flat.slice(0, 600));
+assert("shows the credential badge", flat.includes("RELAY_API_KEY 已配置"), flat.slice(0, 600));
 assert("offers 新增网关", flat.includes("+ 新增网关"), flat.slice(0, 600));
 assert("offers route removal", flat.includes("删除"), flat.slice(0, 600));
-assert("renders the model card", flat.includes("tier 3") && flat.includes("可带工具") && fields.includes("GPT-6 Astra"), `${flat.slice(-300)} || ${fields.slice(0, 300)}`);
+assert("renders the model card", flat.includes("tier 3") && flat.includes("可带工具") && fields.includes("Aux Large"), `${flat.slice(-300)} || ${fields.slice(0, 300)}`);
 assert(
   "renders learned quality from object cells",
   /当前学习质量最高：[^\n]*0\.95/.test(flat),

@@ -218,7 +218,7 @@ async function runOne(route, task) {
 }
 
 // ---- judge: only the cells a checklist regex marked as failures -------------
-const JUDGE_MODEL = opt("judge", "cr05");
+const JUDGE_MODEL = opt("judge", "rv05");
 const judgeRoute = routes.find((r) => r.id === JUDGE_MODEL);
 
 async function judgeChecklist(cell) {

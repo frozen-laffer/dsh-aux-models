@@ -81,15 +81,15 @@ function makeCredentials(store = {}) {
 }
 
 const editor = makeEditor({
-  dieqi: {
-    displayName: "蝶祈云 GPT",
+  relay: {
+    displayName: "中转站 GPT",
     api: "openai-completions",
-    baseURL: "https://cfapi.dieqiyun.top/v1",
-    apiKeyEnv: "DIEQI_API_KEY",
-    models: [{ id: "gpt-6-astra" }],
+    baseURL: "https://relay.example.com/v1",
+    apiKeyEnv: "RELAY_API_KEY",
+    models: [{ id: "aux-large" }],
   },
 });
-const credentials = makeCredentials({ DIEQI_API_KEY: "sk-test" });
+const credentials = makeCredentials({ RELAY_API_KEY: "sk-test" });
 const ctx = {
   get(name) {
     if (name === "configEditor") return editor;
@@ -106,8 +106,8 @@ const view = await gatewayRoutesView(ctx);
 check("view available", view.available, true);
 check("view entryId", view.entryId, "llm-pi-ai");
 check("view apis", view.apis, GATEWAY_APIS);
-check("view lists one route", view.providers.map(p => p.id), ["dieqi"]);
-check("route models", view.providers[0].models, ["gpt-6-astra"]);
+check("view lists one route", view.providers.map(p => p.id), ["relay"]);
+check("route models", view.providers[0].models, ["aux-large"]);
 check("credential configured", view.providers[0].credential.configured, true);
 
 const noCtx = await gatewayRoutesView({ get: () => undefined });
@@ -119,21 +119,21 @@ assert("no configEditor → reason", typeof noCtx.reason === "string" && noCtx.r
 /* -------------------------------------------------------------------------- */
 
 const good = {
-  provider: "dieqi-img",
-  displayName: "蝶祈云 图片",
+  provider: "relay-img",
+  displayName: "中转站 图片",
   api: "openai-completions",
-  baseURL: "https://cfimg.dieqiyun.top/v1/",
-  apiKeyEnv: "DIEQI_IMG_KEY",
-  models: [{ id: "gpt-image-2.6-flare" }],
+  baseURL: "https://img.relay.example.com/v1/",
+  apiKeyEnv: "RELAY_IMG_KEY",
+  models: [{ id: "img-model-a" }],
 };
 check("valid body has no problems", validateRouteBody(good).problems, []);
-check("baseURL trailing slash trimmed", validateRouteBody(good).value.baseURL, "https://cfimg.dieqiyun.top/v1");
+check("baseURL trailing slash trimmed", validateRouteBody(good).value.baseURL, "https://img.relay.example.com/v1");
 check("model defaults filled", validateRouteBody(good).value.models[0].contextWindow, 262144);
 
 check("bad provider rejected", validateRouteBody({ ...good, provider: "Bad Id" }).problems.length > 0, true);
 check("bad api rejected", validateRouteBody({ ...good, api: "openai-chat" }).problems.length > 0, true);
-check("bad baseURL rejected", validateRouteBody({ ...good, baseURL: "cfimg.dieqiyun.top" }).problems.length > 0, true);
-check("bad apiKeyEnv rejected", validateRouteBody({ ...good, apiKeyEnv: "dieqi img key" }).problems.length > 0, true);
+check("bad baseURL rejected", validateRouteBody({ ...good, baseURL: "img.relay.example.com" }).problems.length > 0, true);
+check("bad apiKeyEnv rejected", validateRouteBody({ ...good, apiKeyEnv: "relay img key" }).problems.length > 0, true);
 check("no models rejected", validateRouteBody({ ...good, models: [] }).problems.length > 0, true);
 
 /* -------------------------------------------------------------------------- */
@@ -142,15 +142,15 @@ check("no models rejected", validateRouteBody({ ...good, models: [] }).problems.
 
 const created = await upsertGatewayRoute(ctx, { ...good, apiKey: "sk-img-test" });
 check("upsert status", created.status, 200);
-check("upsert provider", created.body.provider, "dieqi-img");
-check("upsert models", created.body.models, ["gpt-image-2.6-flare"]);
-check("key stored in credentials", credentials.writes.map(w => w.ref), ["DIEQI_IMG_KEY"]);
+check("upsert provider", created.body.provider, "relay-img");
+check("upsert models", created.body.models, ["img-model-a"]);
+check("key stored in credentials", credentials.writes.map(w => w.ref), ["RELAY_IMG_KEY"]);
 check("editor.edit called once", editor.edits.length, 1);
-check("provider persisted", editor.row.options.config.providers["dieqi-img"].baseURL, "https://cfimg.dieqiyun.top/v1");
-check("existing provider kept", editor.row.options.config.providers["dieqi"].apiKeyEnv, "DIEQI_API_KEY");
-check("persisted models are objects with input", editor.row.options.config.providers["dieqi-img"].models[0].input, ["text"]);
+check("provider persisted", editor.row.options.config.providers["relay-img"].baseURL, "https://img.relay.example.com/v1");
+check("existing provider kept", editor.row.options.config.providers["relay"].apiKeyEnv, "RELAY_API_KEY");
+check("persisted models are objects with input", editor.row.options.config.providers["relay-img"].models[0].input, ["text"]);
 
-const withoutKey = await upsertGatewayRoute(ctx, { ...good, provider: "dieqi-img2", apiKeyEnv: "NO_SUCH_KEY" });
+const withoutKey = await upsertGatewayRoute(ctx, { ...good, provider: "relay-img2", apiKeyEnv: "NO_SUCH_KEY" });
 check("upsert without key works", withoutKey.status, 200);
 check("no extra credential write", credentials.writes.length, 1);
 
@@ -165,11 +165,11 @@ check("upsert without configEditor", noEditor.status, 503);
 /* discover                                                                   */
 /* -------------------------------------------------------------------------- */
 
-const noKey = await discoverGatewayModels(ctx, { baseURL: "https://cfapi.dieqiyun.top/v1", api: "openai-completions", apiKeyEnv: "MISSING_KEY" });
+const noKey = await discoverGatewayModels(ctx, { baseURL: "https://relay.example.com/v1", api: "openai-completions", apiKeyEnv: "MISSING_KEY" });
 check("discover without key", noKey.status, 400);
 assert("discover says which env var", String(noKey.body.error).includes("MISSING_KEY"), String(noKey.body.error));
 
-const resolvedKey = await discoverGatewayModels(ctx, { baseURL: "not-a-url", api: "openai-completions", apiKeyEnv: "DIEQI_API_KEY" });
+const resolvedKey = await discoverGatewayModels(ctx, { baseURL: "not-a-url", api: "openai-completions", apiKeyEnv: "RELAY_API_KEY" });
 check("discover bad url", resolvedKey.status, 400);
 
 const blank = await discoverGatewayModels(ctx, {});
@@ -226,7 +226,7 @@ async function call(path, method, options) {
 
 let res = await call("/dsh-aux-models/routes", "GET");
 check("routes: status", res.status, 200);
-check("routes: one provider", JSON.parse(res.body).providers.map(p => p.id), ["dieqi", "dieqi-img", "dieqi-img2"]);
+check("routes: one provider", JSON.parse(res.body).providers.map(p => p.id), ["relay", "relay-img", "relay-img2"]);
 
 res = await call("/dsh-aux-models/routes", "POST");
 check("routes: POST rejected", res.status, 405);
@@ -242,7 +242,7 @@ check("route: empty models rejected", res.status, 400);
 
 res = await call("/dsh-aux-models/route", "POST", { body: { ...good, provider: "fresh", displayName: "Fresh", apiKey: "" } });
 check("route: accepted", res.status, 200);
-check("route: response models", JSON.parse(res.body).models, ["gpt-image-2.6-flare"]);
+check("route: response models", JSON.parse(res.body).models, ["img-model-a"]);
 
 res = await call("/dsh-aux-models/discover", "GET");
 check("discover: GET rejected", res.status, 405);
@@ -253,10 +253,10 @@ check("discover: empty baseURL rejected", res.status, 400);
 res = await call("/dsh-aux-models/route-remove", "POST", { body: { provider: "nope" } });
 check("remove: unknown provider", res.status, 404);
 
-res = await call("/dsh-aux-models/route-remove", "POST", { headers: { origin: "http://evil.example" }, body: { provider: "dieqi-img" } });
+res = await call("/dsh-aux-models/route-remove", "POST", { headers: { origin: "http://evil.example" }, body: { provider: "relay-img" } });
 check("remove: cross-origin rejected", res.status, 403);
 
-res = await call("/dsh-aux-models/route-remove", "GET", { body: { provider: "dieqi-img" } });
+res = await call("/dsh-aux-models/route-remove", "GET", { body: { provider: "relay-img" } });
 check("remove: GET rejected", res.status, 405);
 
 res = await call("/dsh-aux-models/route-remove", "POST", { body: { provider: "Bad Id" } });
@@ -271,13 +271,13 @@ writeRegistryFile(
     version: 2,
     channels: [
       {
-        id: "x001-gpt",
-        provider: "dieqi-img2",
+        id: "chan-legacy",
+        provider: "relay-img2",
         multiplier: 1,
         cacheHitRate: 0,
         stability: 8,
         enabled: true,
-        models: [{ id: "luna", model: "gpt-5.6-luna", qualityTier: 3, strengths: ["general"] }],
+        models: [{ id: "gamma", model: "aux-lite-56", qualityTier: 3, strengths: ["general"] }],
       },
     ],
   }),
@@ -286,24 +286,24 @@ const wired = settingsHandlers(ctx, { registryPath });
 const previous = handlers["/dsh-aux-models/route-remove"];
 handlers["/dsh-aux-models/route-remove"] = wired["/dsh-aux-models/route-remove"];
 
-res = await call("/dsh-aux-models/route-remove", "POST", { body: { provider: "dieqi-img2" } });
+res = await call("/dsh-aux-models/route-remove", "POST", { body: { provider: "relay-img2" } });
 check("remove: route in use rejected", res.status, 409);
-assert("remove: says which models", String(JSON.parse(res.body).error).includes("luna"), res.body);
+assert("remove: says which models", String(JSON.parse(res.body).error).includes("gamma"), res.body);
 
-res = await call("/dsh-aux-models/route-remove", "POST", { body: { provider: "dieqi-img" } });
+res = await call("/dsh-aux-models/route-remove", "POST", { body: { provider: "relay-img" } });
 check("remove: unused route goes", res.status, 200);
-check("remove: reports remaining", JSON.parse(res.body).providers, ["dieqi", "dieqi-img2", "fresh"]);
-check("remove: dropped from config", editor.row.options.config.providers["dieqi-img"], undefined);
+check("remove: reports remaining", JSON.parse(res.body).providers, ["relay", "relay-img2", "fresh"]);
+check("remove: dropped from config", editor.row.options.config.providers["relay-img"], undefined);
 check("remove: credential note", typeof JSON.parse(res.body).note, "string");
 
-res = await call("/dsh-aux-models/route-remove", "POST", { body: { provider: "dieqi-img" } });
+res = await call("/dsh-aux-models/route-remove", "POST", { body: { provider: "relay-img" } });
 check("remove: second attempt is 404", res.status, 404);
 
 handlers["/dsh-aux-models/route-remove"] = previous;
 rmSync(workDir, { recursive: true, force: true });
 
 /* direct call: no configEditor → 503 */
-const noEditorRemove = await removeGatewayRoute({ get: () => undefined }, { provider: "dieqi" }, { registryPath: "unused.json" });
+const noEditorRemove = await removeGatewayRoute({ get: () => undefined }, { provider: "relay" }, { registryPath: "unused.json" });
 check("remove: without configEditor", noEditorRemove.status, 503);
 
 /* -------------------------------------------------------------------------- */

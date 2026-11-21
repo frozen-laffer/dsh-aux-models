@@ -175,11 +175,11 @@ console.log(`decay: fresh=${fresh.value.toFixed(3)} stale=${stale.value.toFixed(
 
 /* 10. transient failures are retryable, auth failures are not */
 const { isTransientFailure } = await import("./index.js");
-assert.ok(isTransientFailure(new Error('aux-models: dieqi/gpt-6-astra failed: error: 502 "cannot resolve tunnel destination cfapi.dieqiyun.top (ETIMEDOUT)"')));
+assert.ok(isTransientFailure(new Error('aux-models: relay/aux-large failed: error: 502 "cannot resolve tunnel destination relay.example.com (ETIMEDOUT)"')));
 assert.ok(isTransientFailure(new Error("socket hang up")));
-assert.ok(isTransientFailure(new Error("aux-models: dieqi/gpt-6-astra timed out after 180000ms")));
+assert.ok(isTransientFailure(new Error("aux-models: relay/aux-large timed out after 180000ms")));
 assert.ok(!isTransientFailure(new Error('401 "INVALID_API_KEY"')));
-assert.ok(!isTransientFailure(new Error("aux-models: dieqi/gpt-6-astra returned no text")));
+assert.ok(!isTransientFailure(new Error("aux-models: relay/aux-large returned no text")));
 console.log("transient: 502/timeout retryable, 401/empty not");
 
 console.log("check-route: ok");
